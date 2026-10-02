@@ -4,13 +4,6 @@ MailSift is a dynamic, full-stack web application built in Python for automated 
 
 ---
 
-## 🎨 Design Theme & Palette
-Designed with a cohesive **Warm Light Brown (Mocha) & Deep Navy** aesthetic:
-- **Navy Primary (`#0F172A`, `#1E293B`)**: Navigation bars, headers, and primary badges.
-- **Warm Light Brown (`#FAF6F0`, `#E8DFC8`, `#8C6D46`)**: Main content backgrounds, email card containers, and priority accent highlights.
-
----
-
 ## 🚀 Key Features
 
 - **OAuth 2.0 Gmail Connection:** Safely authenticate with personal Google accounts (`gmail.modify` scope).
@@ -26,21 +19,6 @@ Designed with a cohesive **Warm Light Brown (Mocha) & Deep Navy** aesthetic:
 
 ---
 
-## 🏗 System Architecture
-
-```
-[ Gmail Event ] ──► [ FastAPI Webhook ] ──► [ Celery / Redis Worker ]
-                                                   │
-                                ┌──────────────────┴──────────────────┐
-                                ▼                                     ▼
-                      [ OpenAI API Triage ]               [ SQLite / PostgreSQL ]
-                                │                                     │
-                                └──────────────────┬──────────────────┘
-                                                   ▼
-                                       [ Sync Back to Gmail API ]
-```
-
----
 
 ## 💻 Tech Stack
 
@@ -53,10 +31,6 @@ Designed with a cohesive **Warm Light Brown (Mocha) & Deep Navy** aesthetic:
 
 ## 🛠 Local Setup Instructions
 
-### Prerequisites
-- Python >= 3.10
-- Redis instance (`redis-server` or via Docker)
-- Google Cloud Console Project (with Gmail API enabled & OAuth Credentials)
 
 ### 1. Clone & Setup Virtual Environment
 ```bash
@@ -95,7 +69,3 @@ uvicorn app.main:app --reload
 Open `http://localhost:8000` in your browser.
 
 ---
-
-## ⚡ Technical Highlights for Reviewers
-- **Data Validation:** Strict runtime validation using **Pydantic v2** models for structured OpenAI outputs.
-- **Asynchronous Scalability:** Heavy Gmail API sync jobs are dispatched asynchronously to **Celery workers** to avoid slowing down HTTP request cycles.
