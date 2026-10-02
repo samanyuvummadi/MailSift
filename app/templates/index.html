@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MailSift Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen">
+    <div class="max-w-6xl mx-auto px-4 py-8">
+        
+        <!-- Header -->
+        <div class="flex items-center justify-between mb-8">
+            <div>
+                <h1 class="text-3xl font-bold text-indigo-400">MailSift</h1>
+                <p class="text-slate-400 text-sm mt-1">Gmail Indexer</p>
+            </div>
+            <button onclick="openCategoryModal()" class="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg font-medium text-sm transition shadow">
+                + Manage Categories &amp; Rules
+            </button>
+        </div>
+
+        <!-- Categories Filters -->
+        <div class="flex items-center space-x-2 overflow-x-auto pb-4 mb-6 border-b border-slate-800">
+            <a href="/?category=All" 
+               class="px-4 py-2 rounded-full text-sm font-medium transition {{ 'bg-indigo-600 text-white' if selected_category == 'All' else 'bg-slate-800 text-slate-300 hover:bg-slate-700' }}">
+                All
+            </a>
+            {% for cat in categories %}
+            <a href="/?category={{ cat }}" 
+               class="px-4 py-2 rounded-full text-sm font-medium transition {{ 'bg-indigo-600 text-white' if selected_category == cat else 'bg-slate-800 text-slate-300 hover:bg-slate-700' }}">
+                {{ cat }}
+            </a>
+            {% endfor %}
+        </div>
+
+        <!-- Email List -->
+        <div class="bg-slate-800 rounded-xl shadow-lg border border-slate-700 overflow-hidden">
+            {% if not emails %}
+                <div class="p-8 text-center text-slate-400">No emails found in this category.</div>
+            {% else %}
+                <div class="divide-y divide-slate-700">
+                    {% for email in emails %}
+                    <div class="p-4 hover:bg-slate-750 transition flex items-center justify-between cursor-pointer group" onclick="openEmailModal('{{ email.id }}')">
+                        <div class="flex-1 min-w-0 pr-4">
+                            <div class="flex items-center space-x-3 mb-1">
+                                <span class="font-semibold text-slate-200 truncate">{{ email.display_sender }}</span>
+                                <span class="bg-slate-700 text-indigo-300 text-xs px-2.5 py-0.5 rounded-md font-medium border border-slate-600">
+                                    {{ email.category }}
+                                </span>
+                            </div>
+                            <h2 class="text-sm font-medium text-indigo-300 truncate mb-1">{{ email.subject }}</h2>
+                            <p class="text-xs text-slate-400 truncate">{{ email.snippet }}</p>
+                        </div>
+                        
+                        <!-- Actions -->
+                        <div class="flex items-center space-x-2" onclick="event.stopPropagation();">
+                            <select onchange="reassignSender('{{ email.display_sender }}', this.value)" class="bg-slate-900 border border-slate-600 text-slate-300 text-xs rounded-lg p-1.5 focus:ring-indigo-500 focus:border-indigo-500">
+                                <option value="" disabled selected>Move all from "{{ email.display_sender }}"...</option>
+                                {% for cat in categories %}
+                                <option value="{{ cat }}">{{ cat }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Category & Rules Modal -->
+    <div id="categoryModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
+        <div class="bg-slate-800 border border-slate-700 rounded-xl max-w-lg w-full p-6 shadow-2xl max-h-[90vh] flex flex-col">
+            <div class="flex justify-between items-center mb-4 border-b border-slate-700 pb-3">
+                <h2 class="text-xl font-bold text-indigo-300">Manage Categories &amp; Rules</h2>
+                <button onclick="closeCategoryModal()" class="text-slate-400 hover:text-white font-bold text-xl px-2">✕</button>
+            </div>
+            
+            <div class="overflow-y-auto flex-1 space-y-6 pr-1">
+                <!-- Delete Active Categories -->
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Active Categories</label>
+                    <div class="space-y-2">
+                        {% for cat in categories %}
+                        <div class="flex items-center justify-between bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm">
+                            <span class="text-slate-200 font-medium">{{ cat }}</span>
+                            {% if cat != "Other" %}
+                            <button onclick="deleteCategory('{{ cat }}')" class="text-xs text-red-400 hover:text-red-300 hover:bg-red-950/50 px-2 py-1 rounded transition">
+                                Delete
+                            </button>
+                            {% else %}
+                            <span class="text-xs text-slate-500 italic">Default</span>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- Add Category & Batch Rules -->
+                <form onsubmit="submitCategoryRules(event)" class="space-y-4 pt-4 border-t border-slate-700">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">New Category Name</label>
+                        <input type="text" id="catNameInput" required placeholder="e.g. Developer, Newsletters, Shopping" 
+                               class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-slate-100 focus:outline-none focus:border-indigo-500">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">Assign Senders / Keywords (Optional)</label>
+                        <p class="text-xs text-slate-400 mb-2">Enter display names or header keywords (comma-separated). E.g. <code class="text-indigo-300">GitHub, Amazon, Canvas</code></p>
+                        <textarea id="catSendersInput" rows="2" placeholder="GitHub, Uber, LinkedIn" 
+                                  class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-slate-100 focus:outline-none focus:border-indigo-500"></textarea>
+                    </div>
+
+                    <div class="flex justify-end space-x-3 pt-3">
+                        <button type="button" onclick="closeCategoryModal()" class="bg-slate-700 hover:bg-slate-600 text-white text-sm px-4 py-2 rounded-lg font-medium">Cancel</button>
+                        <button type="submit" class="bg-indigo-600 hover:bg-indigo-500 text-white text-sm px-4 py-2 rounded-lg font-medium">Save</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Full Email Viewer Modal -->
+    <div id="emailModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
+        <div class="bg-slate-800 border border-slate-700 rounded-xl max-w-2xl w-full max-h-[85vh] flex flex-col shadow-2xl">
+            <div class="p-6 border-b border-slate-700 flex justify-between items-start">
+                <div>
+                    <h2 id="modalSubject" class="text-xl font-bold text-indigo-300">Loading...</h2>
+                    <p id="modalSender" class="text-sm text-slate-400 mt-1"></p>
+                    <p id="modalDate" class="text-xs text-slate-500 mt-0.5"></p>
+                </div>
+                <button onclick="closeModal()" class="text-slate-400 hover:text-white font-bold text-xl px-2">✕</button>
+            </div>
+            <div class="p-6 overflow-y-auto flex-1">
+                <div id="modalBody" class="text-slate-300 text-sm whitespace-pre-wrap leading-relaxed">Loading message content...</div>
+            </div>
+            <div class="p-4 border-t border-slate-700 bg-slate-850 flex justify-end">
+                <button onclick="closeModal()" class="bg-slate-700 hover:bg-slate-600 text-white text-sm px-4 py-2 rounded-lg font-medium">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function openEmailModal(emailId) {
+            const modal = document.getElementById('emailModal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            
+            document.getElementById('modalSubject').innerText = "Loading...";
+            document.getElementById('modalSender').innerText = "";
+            document.getElementById('modalDate').innerText = "";
+            document.getElementById('modalBody').innerText = "Fetching email details...";
+
+            try {
+                const res = await fetch(`/api/email/${emailId}`);
+                const data = await res.json();
+                document.getElementById('modalSubject').innerText = data.subject;
+                document.getElementById('modalSender').innerText = "From: " + data.sender;
+                document.getElementById('modalDate').innerText = data.date;
+                document.getElementById('modalBody').innerText = data.body || data.snippet;
+            } catch (err) {
+                document.getElementById('modalBody').innerText = "Error loading email content.";
+            }
+        }
+
+        function closeModal() {
+            const modal = document.getElementById('emailModal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        function openCategoryModal() {
+            document.getElementById('categoryModal').classList.remove('hidden');
+            document.getElementById('categoryModal').classList.add('flex');
+        }
+
+        function closeCategoryModal() {
+            document.getElementById('categoryModal').classList.add('hidden');
+            document.getElementById('categoryModal').classList.remove('flex');
+        }
+
+        async function submitCategoryRules(event) {
+            event.preventDefault();
+            const category = document.getElementById('catNameInput').value;
+            const senders = document.getElementById('catSendersInput').value;
+
+            await fetch('/api/categories/add', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ category: category, senders: senders })
+            });
+            window.location.reload();
+        }
+
+        async function deleteCategory(categoryName) {
+            if (!confirm(`Delete category "${categoryName}"? Emails in this category will move to 'Other'.`)) return;
+
+            const res = await fetch('/api/categories/delete', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ category: categoryName })
+            });
+            if (res.ok) window.location.reload();
+        }
+
+        async function reassignSender(senderName, category) {
+            if (!category) return;
+            await fetch('/api/sender/rule', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ sender_name: senderName, category: category })
+            });
+            window.location.reload();
+        }
+    </script>
+</body>
+</html>
