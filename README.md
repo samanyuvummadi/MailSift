@@ -1,4 +1,4 @@
-# 📬 MailSift — Intelligent Gmail Categorization & Priority Triage Engine (Python Edition)
+# 📬 MailSift — Priority Triage Engine
 
 MailSift is a fully-featured python web application that organizes Gmail emails automatically. It integrates directly with your personal Gmail account, automatically sorts incoming emails by AI schema parsing (Pydantic + OpenAI), allows you to set priority from 1 to 5 by yourself, and updates custom labels on the fly into your local Gmail mailbox.
 
